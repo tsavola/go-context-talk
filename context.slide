@@ -1,0 +1,142 @@
+Context package
+at Helsinki Gophers meetup
+18 Jan 2017
+
+Timo Savola
+CTO, Ninchat
+timo@ninchat.com
+@timosavola
+
+* History
+
+- `golang.org/x/net/context` package released in 2014
+- Developed for Google's needs
+- `context` package in standard library since Go 1.7
+- Wider support in Go 1.8 (scheduled to be released in two weeks)
+
+
+* Three jobs
+
+- Timeouts (deadlines)
+- Cancellation
+- Information propagation (values)
+
+
+* Characteristics
+
+- To be used with blocking calls
+- Immutable: only way to modify a context is to derive a sub-context
+- Hierarchical: operations on a high-level context trickle down to derived contexts
+- Standard glue between various APIs, or candidate for such
+
+
+* Deadlines
+
+- Go already had I/O deadline APIs and timer channels
+- Context is a generic mechanism
+- Context combines layers of deadline configurations
+
+
+* Cancellation
+
+- Could be accomplished with plain channels etc.
+- Context hides complexity caused by nesting
+- Go APIs haven't traditionally given much thought to graceful shutdown
+- Context promotes cancellation awareness, thanks to the common API
+- Benefits architecture of non-trivial apps which are not expected to run forever
+
+
+* Values
+
+- Values stored in a context transit the call stack transparently
+- Strong decoupling thanks to lexically scoped keys
+- Solves similar problems as thread-local storage
+- _Request-scoped_storage_
+- Not specific to a thread or a goroutine
+
+
+* Building blocks
+
+- Context interface and factory functions
+- Convention: pass context as first function argument
+
+	func Foo(ctx context.Context, ...)
+
+
+* Example: Top level
+
+.code -edit main.go /^func/,
+
+
+* Example: Reacting to events
+
+.code -edit app.go /^func/,
+
+
+* Example: API call with a deadline
+
+.code -edit stuff.go /^func/,
+
+
+* Example: Implementation of a blocking API
+
+.code -edit api/operation.go /^func/,
+
+
+* API implementation support
+
+- `Context.Done()` channel will be closed on deadline or cancellation
+- A channel may be read concurrently
+- A closed channel may be read repeatedly
+- `Context.Deadline()` value may be used with readers/writers, but it doesn't respect cancellation
+
+
+* Supported by net package
+
+since 1.7:
+
+	Dialer.DialContext(ctx context.Context, net, addr string) (Conn, error)
+
+since 1.8:
+
+	Resolver.LookupAddr(ctx context.Context, addr string) (names []string, err error)
+	Resolver.LookupCNAME(ctx context.Context, host string) (cname string, err error)
+	Resolver.LookupHost(ctx context.Context, host string) (addrs []string, err error)
+	...
+
+
+* Supported by net/http package
+
+since 1.7:
+
+	Request.WithContext(ctx context.Context) *Request
+	Request.Context() context.Context
+	ServerContextKey
+	LocalAddrContextKey
+
+since 1.8:
+
+	Server.Shutdown(ctx context.Context) error
+
+
+* Supported by os/exec package
+
+since 1.7:
+
+	CommandContext(ctx context.Context, name string, arg ...string) *Cmd
+
+
+* Supported by database/sql package
+
+since 1.8:
+
+	DB.QueryContext(ctx context.Context, query string, args ...interface{}) (*Rows, error)
+	...
+
+
+* Thoughts
+
+- Simple, but high-impact if supported widely
+- Violates the single responsibility principle... by definition
+- Value API's role is unclear, and controversial
+
